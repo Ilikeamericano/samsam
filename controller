@@ -1,0 +1,635 @@
+public function update(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            //첫번째 테이블 업데이트
+            $contract = Contract::find($request->temp_idx);
+            $temp_contract = temp_Contract::find($request->temp_idx);
+
+            $contract->site_name = $temp_contract->site_name;
+            $contract->group = $temp_contract->group;
+            $contract->type = $temp_contract->type;
+            $contract->multiple = $temp_contract->multiple;
+            $contract->order = $temp_contract->order;
+            $contract->ilc = $temp_contract->ilc;
+            $contract->iaip = $temp_contract->iaip;
+            $contract->eip = $temp_contract->eip;
+            $contract->hip = $temp_contract->hip;
+            $contract->pip = $temp_contract->pip;
+            $contract->lcip = $temp_contract->lcip;
+            $contract->oshme = $temp_contract->oshme;
+            $contract->ecc = $temp_contract->ecc;
+            $contract->expense = $temp_contract->expense;
+            $contract->me = $temp_contract->me;
+            $contract->contract_date = $temp_contract->contract_date;
+            $contract->company = $temp_contract->company;
+            $contract->profit = $temp_contract->profit;
+            $contract->updated_user = auth()->user()->idx;
+            $contract->ip = $_SERVER["REMOTE_ADDR"];
+
+            $contract->save();
+
+            $contract_idx = $contract->idx;
+
+            //building 테이블 업데이트 contract
+            $ContractBuilding = ContractBuilding::data($request->temp_idx);
+            $temp_Contract_building = temp_Contract_building::data($request->temp_idx);
+            $buildingTable_idx_arr = [];
+            $temp_buildingTable_idx_arr = [];
+            $building_insArr = [];
+            $building_updArr = [];
+            $building_delArr = [];
+
+            foreach ($ContractBuilding as $buildingTable) {
+                array_push($buildingTable_idx_arr, $buildingTable->idx);
+            }
+
+            foreach ($temp_Contract_building as $temp_buildingTable) {
+                array_push($temp_buildingTable_idx_arr, $temp_buildingTable->idx);
+                if ($temp_buildingTable->temp_division == 1) {
+                    //temp_division = 1 이라는 건 신규 추가한 데이터라는 뜻
+                    array_push($building_insArr, $temp_buildingTable->idx);
+                }
+            }
+            // dd(1);
+
+            $building_updArr = array_intersect($buildingTable_idx_arr, $temp_buildingTable_idx_arr);
+            // 교집합
+            // dd($building_updArr);
+            $building_delArr = array_diff($buildingTable_idx_arr, $temp_buildingTable_idx_arr);
+            // 앞에 배열에는 있고 뒤에 배열에는 없는 요소들이 저장됨
+
+
+            if (empty($building_insArr) && empty($building_updArr) && empty($building_delArr)) {
+                // dd(1221121);
+                //2023-09-07 이성택 주석 ( ↑함수는 단일동일때? 만 돌아감? 아마? )
+                // 세 개의 배열이 모두 빈 배열인 경우에 실행되는 코드
+                // 예: 배열들이 모두 비어있을 때 수행할 작업
+                // ...
+                $contractConstruction = ContractConstruction::getIdx($request->temp_idx);
+                // dd($request->temp_idx);
+                $temp_ContractConstruction = temp_ContractConstruction::getIdx($request->temp_idx);
+
+                // 본테이블 과 임시테이블 둘 다 데이터가 있을 때
+                $secondTable_idx_arr = [];
+                $temp_secondTable_idx_arr = [];
+                $insArr = [];
+                foreach ($contractConstruction as $secondTable) {
+                    array_push($secondTable_idx_arr, $secondTable->idx);
+                }
+                foreach ($temp_ContractConstruction as $temp_secondTable) {
+                    array_push($temp_secondTable_idx_arr, $temp_secondTable->idx);
+                    if ($temp_secondTable->temp_division == 1) {
+                        array_push($insArr, $temp_secondTable->idx);
+                    }
+                }
+
+                // dd($temp_secondTable_idx_arr);
+
+                $updArr = array_intersect($secondTable_idx_arr, $temp_secondTable_idx_arr);
+                $delArr = array_diff($secondTable_idx_arr, $temp_secondTable_idx_arr);
+
+                $dontDel = [];
+
+                foreach ($updArr as $updArrIdx) {
+
+                    $contractConstruction = ContractConstruction::find($updArrIdx);
+                    $temp_ContractConstruction = temp_ContractConstruction::find($updArrIdx);
+
+                    $contractConstruction->contract_idx = $contract->idx;
+                    $contractConstruction->type = $temp_ContractConstruction->type;
+                    $contractConstruction->category = $temp_ContractConstruction->category;
+                    $contractConstruction->unit = $temp_ContractConstruction->unit;
+                    $contractConstruction->page_idx = $temp_ContractConstruction->page_idx;
+                    $contractConstruction->quantity = $temp_ContractConstruction->quantity;
+                    $contractConstruction->total_material_price = $temp_ContractConstruction->total_material_price;
+                    $contractConstruction->total_labor_price = $temp_ContractConstruction->total_labor_price;
+                    $contractConstruction->total_expense_price = $temp_ContractConstruction->total_expense_price;
+                    $contractConstruction->uvr = $temp_ContractConstruction->uvr;
+                    $contractConstruction->building_idx = $temp_ContractConstruction->building_idx;
+
+                    $contractConstruction->save();
+
+
+                    $temp_ContractConstructionDetail_pz = temp_ContractConstructionDetail::getIdx($updArrIdx); // 세번째 테이블 idx값 뽑아오기
+                    // $temp_ContractConstructionDetail_pz =
+                    foreach ($temp_ContractConstructionDetail_pz as $thirdTableIdx) {
+                        // dd(56);
+                        # code...\
+                        //이성택 ㅌㅌㅌㅌㅌㅌㅌ
+                        //여기가 단일동 Detail 밀어넣는 작업
+                        $contractConstructionDetail = $thirdTableIdx->temp_division == 0 ? ContractConstructionDetail::find($thirdTableIdx->idx) : new ContractConstructionDetail();
+                        $temp_ContractConstructionDetail = temp_ContractConstructionDetail::find($thirdTableIdx->idx);
+                        $contractConstructionDetail->contract_construction_idx = $contractConstruction->idx;
+                        $contractConstructionDetail->item_code = $temp_ContractConstructionDetail->item_code;
+                        $contractConstructionDetail->item_name = $temp_ContractConstructionDetail->item_name;
+                        $contractConstructionDetail->item_standard = $temp_ContractConstructionDetail->item_standard;
+                        $contractConstructionDetail->item_unit = $temp_ContractConstructionDetail->item_unit;
+                        $contractConstructionDetail->item_quantity = $temp_ContractConstructionDetail->item_quantity;
+                        $contractConstructionDetail->material_cost_group = $temp_ContractConstructionDetail->material_cost_group;
+                        $contractConstructionDetail->material_cost_type = $temp_ContractConstructionDetail->material_cost_type;
+                        $contractConstructionDetail->material_cost = $temp_ContractConstructionDetail->material_cost;
+                        $contractConstructionDetail->labor_cost_group = $temp_ContractConstructionDetail->labor_cost_group;
+                        $contractConstructionDetail->labor_cost_type = $temp_ContractConstructionDetail->labor_cost_type;
+                        $contractConstructionDetail->labor_cost = $temp_ContractConstructionDetail->labor_cost;
+                        $contractConstructionDetail->expense_group = $temp_ContractConstructionDetail->expense_group;
+                        $contractConstructionDetail->expense_type = $temp_ContractConstructionDetail->expense_type;
+                        $contractConstructionDetail->expense = $temp_ContractConstructionDetail->expense;
+                        $contractConstructionDetail->material_cost_execute = $temp_ContractConstructionDetail->material_cost_execute;
+                        $contractConstructionDetail->expense_cost_execute = $temp_ContractConstructionDetail->expense_cost_execute;
+                        $contractConstructionDetail->labor_cost_execute = $temp_ContractConstructionDetail->labor_cost_execute;
+                        $contractConstructionDetail->item_quantity_execute = $temp_ContractConstructionDetail->item_quantity_execute;
+                        $contractConstructionDetail->save();
+
+
+
+                        array_push($dontDel, $contractConstructionDetail->idx);
+                    }
+                }
+
+                foreach ($delArr as $delArrIdx) {
+                    $contractConstruction_del = ContractConstruction::find($delArrIdx);
+                    $contractConstruction_del->delete();
+                }
+
+                foreach ($insArr as $insArrIdx) {
+                    $contractConstruction = new ContractConstruction();
+                    $temp_ContractConstruction_ins = temp_ContractConstruction::find($insArrIdx);
+
+                    $contractConstruction->contract_idx = $contract->idx;
+                    $contractConstruction->type = $temp_ContractConstruction_ins->type;
+                    $contractConstruction->category = $temp_ContractConstruction_ins->category;
+                    $contractConstruction->unit = $temp_ContractConstruction_ins->unit;
+                    $contractConstruction->quantity = $temp_ContractConstruction_ins->quantity;
+                    $contractConstruction->page_idx = $temp_ContractConstruction_ins->page_idx;
+                    $contractConstruction->total_material_price = $temp_ContractConstruction_ins->total_material_price;
+                    $contractConstruction->total_labor_price = $temp_ContractConstruction_ins->total_labor_price;
+                    $contractConstruction->total_expense_price = $temp_ContractConstruction_ins->total_expense_price;
+                    $contractConstruction->uvr = $temp_ContractConstruction_ins->uvr;
+                    $contractConstruction->building_idx = $temp_ContractConstruction_ins->building_idx;
+
+                    $contractConstruction->save();
+
+                    $temp_ContractConstructionDetail_pz = temp_ContractConstructionDetail::getIdx($insArrIdx); // 세번째 테이블 idx값 뽑아오기
+
+                    foreach ($temp_ContractConstructionDetail_pz as $thirdTableIdx) {
+                        # code...
+                        $contractConstructionDetail = new ContractConstructionDetail();
+                        $temp_ContractConstructionDetail = temp_ContractConstructionDetail::find($thirdTableIdx->idx);
+
+                        $contractConstructionDetail->contract_construction_idx = $contractConstruction->idx;
+                        $contractConstructionDetail->item_code = $temp_ContractConstructionDetail->item_code;
+                        $contractConstructionDetail->item_name = $temp_ContractConstructionDetail->item_name;
+                        $contractConstructionDetail->item_standard = $temp_ContractConstructionDetail->item_standard;
+                        $contractConstructionDetail->item_unit = $temp_ContractConstructionDetail->item_unit;
+                        $contractConstructionDetail->item_quantity = $temp_ContractConstructionDetail->item_quantity;
+                        $contractConstructionDetail->material_cost_group = $temp_ContractConstructionDetail->material_cost_group;
+                        $contractConstructionDetail->material_cost_type = $temp_ContractConstructionDetail->material_cost_type;
+                        $contractConstructionDetail->material_cost = $temp_ContractConstructionDetail->material_cost;
+                        $contractConstructionDetail->labor_cost_group = $temp_ContractConstructionDetail->labor_cost_group;
+                        $contractConstructionDetail->labor_cost_type = $temp_ContractConstructionDetail->labor_cost_type;
+                        $contractConstructionDetail->labor_cost = $temp_ContractConstructionDetail->labor_cost;
+                        $contractConstructionDetail->expense_group = $temp_ContractConstructionDetail->expense_group;
+                        $contractConstructionDetail->expense_type = $temp_ContractConstructionDetail->expense_type;
+                        $contractConstructionDetail->expense = $temp_ContractConstructionDetail->expense;
+                        $contractConstructionDetail->material_cost_execute = $temp_ContractConstructionDetail->material_cost_execute;
+                        $contractConstructionDetail->expense_cost_execute = $temp_ContractConstructionDetail->expense_cost_execute;
+                        $contractConstructionDetail->labor_cost_execute = $temp_ContractConstructionDetail->labor_cost_execute;
+                        $contractConstructionDetail->item_quantity_execute = $temp_ContractConstructionDetail->item_quantity_execute;
+
+                        $contractConstructionDetail->save();
+                    }
+                }
+
+            } else {
+                //2023-09-07 이성택 주석 ( ↓아래 else 함수는 단일동이 아닐때? 아마? 다수동일때만 작동함 )
+
+
+                foreach ($building_delArr as $delIdx) {
+                    $ContractBuilding_del = ContractBuilding::find($delIdx);
+                    $ContractBuilding_del->delete();
+                    //update 때 안들어옴
+                }
+
+
+                foreach ($building_insArr as $key => $insIdx) {
+                    //update 때 안들어옴
+                    $ContractBuilding_ins = new ContractBuilding();
+                    $temp_Contract_building = temp_Contract_building::find($insIdx);
+
+                    $ContractBuilding_ins->building_name = $temp_Contract_building->building_name;
+                    $ContractBuilding_ins->contract_idx = $contract->idx;
+                    $ContractBuilding_ins->save();
+
+                    //------------------------------------------------------------------------------
+
+                    //두번째 테이블 업데이트
+                    $contractConstruction_idx = ContractConstruction::getIdxFirst($insIdx);
+                    $temp_ContractConstruction_idx = temp_ContractConstruction::getIdxFirst($insIdx);
+
+                    $contractConstruction = ContractConstruction::getIdxWhereBuildingIdx($insIdx);
+                    $temp_ContractConstruction = temp_ContractConstruction::getIdxWhereBuildingIdx($insIdx);
+
+                    // 본테이블 과 임시테이블 둘 다 데이터가 있을 때
+                    $secondTable_idx_arr = [];
+                    $temp_secondTable_idx_arr = [];
+                    $insArr = [];
+                    foreach ($contractConstruction as $secondTable) {
+                        array_push($secondTable_idx_arr, $secondTable->idx);
+                    }
+                    foreach ($temp_ContractConstruction as $temp_secondTable) {
+                        array_push($temp_secondTable_idx_arr, $temp_secondTable->idx);
+                        if ($temp_secondTable->temp_division == 1) {
+                            array_push($insArr, $temp_secondTable->idx);
+                        }
+                    }
+                    dd($temp_secondTable_idx_arr);
+                    $updArr = array_intersect($secondTable_idx_arr, $temp_secondTable_idx_arr);
+                    $delArr = array_diff($secondTable_idx_arr, $temp_secondTable_idx_arr);
+
+                    $dontDel = [];
+
+                    foreach ($updArr as $updArrIdx) {
+                        $contractConstruction = ContractConstruction::find($updArrIdx);
+                        $temp_ContractConstruction = temp_ContractConstruction::find($updArrIdx);
+
+                        $contractConstruction->contract_idx = $contract->idx;
+                        $contractConstruction->type = $temp_ContractConstruction->type;
+                        $contractConstruction->category = $temp_ContractConstruction->category;
+                        $contractConstruction->unit = $temp_ContractConstruction->unit;
+                        $contractConstruction->page_idx = $temp_ContractConstruction->page_idx;
+                        $contractConstruction->quantity = $temp_ContractConstruction->quantity;
+                        $contractConstruction->total_material_price = $temp_ContractConstruction->total_material_price;
+                        $contractConstruction->total_labor_price = $temp_ContractConstruction->total_labor_price;
+                        $contractConstruction->total_expense_price = $temp_ContractConstruction->total_expense_price;
+                        $contractConstruction->uvr = $temp_ContractConstruction->uvr;
+                        $contractConstruction->building_idx = $ContractBuilding_ins->idx;
+
+                        $contractConstruction->save();
+
+
+                        //tetetetetesdasdasd
+                        $temp_ContractConstructionDetail_pz = temp_ContractConstructionDetail::getIdx($updArrIdx); // 세번째 테이블 idx값 뽑아오기
+                        // $temp_ContractConstructionDetail_pz =
+                        foreach ($temp_ContractConstructionDetail_pz as $thirdTableIdx) {
+                            # code...
+                            if($thirdTableIdx->temp_division == 0) continue;
+                            $contractConstructionDetail = $thirdTableIdx->temp_division == 1 ? ContractConstructionDetail::find($thirdTableIdx->idx) : new ContractConstructionDetail();
+                            $temp_ContractConstructionDetail = temp_ContractConstructionDetail::find($thirdTableIdx->idx);
+
+                            $contractConstructionDetail->contract_construction_idx = $contractConstruction->idx;
+                            $contractConstructionDetail->item_code = $temp_ContractConstructionDetail->item_code;
+                            $contractConstructionDetail->item_name = $temp_ContractConstructionDetail->item_name;
+                            $contractConstructionDetail->item_standard = $temp_ContractConstructionDetail->item_standard;
+                            $contractConstructionDetail->item_unit = $temp_ContractConstructionDetail->item_unit;
+                            $contractConstructionDetail->item_quantity = $temp_ContractConstructionDetail->item_quantity;
+                            $contractConstructionDetail->material_cost_group = $temp_ContractConstructionDetail->material_cost_group;
+                            $contractConstructionDetail->material_cost_type = $temp_ContractConstructionDetail->material_cost_type;
+                            $contractConstructionDetail->material_cost = $temp_ContractConstructionDetail->material_cost;
+                            $contractConstructionDetail->labor_cost_group = $temp_ContractConstructionDetail->labor_cost_group;
+                            $contractConstructionDetail->labor_cost_type = $temp_ContractConstructionDetail->labor_cost_type;
+                            $contractConstructionDetail->labor_cost = $temp_ContractConstructionDetail->labor_cost;
+                            $contractConstructionDetail->expense_group = $temp_ContractConstructionDetail->expense_group;
+                            $contractConstructionDetail->expense_type = $temp_ContractConstructionDetail->expense_type;
+                            $contractConstructionDetail->expense = $temp_ContractConstructionDetail->expense;
+                            $contractConstructionDetail->material_cost_execute = $temp_ContractConstructionDetail->material_cost_execute;
+                            $contractConstructionDetail->expense_cost_execute = $temp_ContractConstructionDetail->expense_cost_execute;
+                            $contractConstructionDetail->labor_cost_execute = $temp_ContractConstructionDetail->labor_cost_execute;
+                            $contractConstructionDetail->item_quantity_execute = $temp_ContractConstructionDetail->item_quantity_execute;
+
+                            $contractConstructionDetail->save();
+
+                            array_push($dontDel, $contractConstructionDetail->idx);
+                        }
+                    }
+
+                    // 2023-09-08 w
+                    foreach ($delArr as $delArrIdx) {
+                        $contractConstruction_del = ContractConstruction::find($delArrIdx);
+                        $contractConstruction_del->delete();
+                    }
+
+                    foreach ($insArr as $insArrIdx) {
+                        $contractConstruction = new ContractConstruction();
+                        $temp_ContractConstruction_ins = temp_ContractConstruction::find($insArrIdx);
+
+                        $contractConstruction->contract_idx = $contract->idx;
+                        $contractConstruction->type = $temp_ContractConstruction_ins->type;
+                        $contractConstruction->category = $temp_ContractConstruction_ins->category;
+                        $contractConstruction->unit = $temp_ContractConstruction_ins->unit;
+                        $contractConstruction->quantity = $temp_ContractConstruction_ins->quantity;
+                        $contractConstruction->page_idx = $temp_ContractConstruction_ins->page_idx;
+                        $contractConstruction->total_material_price = $temp_ContractConstruction_ins->total_material_price;
+                        $contractConstruction->total_labor_price = $temp_ContractConstruction_ins->total_labor_price;
+                        $contractConstruction->total_expense_price = $temp_ContractConstruction_ins->total_expense_price;
+                        $contractConstruction->uvr = $temp_ContractConstruction_ins->uvr;
+                        $contractConstruction->building_idx = $temp_ContractConstruction_ins->building_idx;
+
+                        $contractConstruction->save();
+
+                        $temp_ContractConstructionDetail_pz = temp_ContractConstructionDetail::getIdx($insArrIdx); // 세번째 테이블 idx값 뽑아오기
+
+                        foreach ($temp_ContractConstructionDetail_pz as $thirdTableIdx) {
+                            # code...
+                            $contractConstructionDetail = new ContractConstructionDetail();
+                            $temp_ContractConstructionDetail = temp_ContractConstructionDetail::find($thirdTableIdx->idx);
+
+                            $contractConstructionDetail->contract_construction_idx = $contractConstruction->idx;
+                            $contractConstructionDetail->item_code = $temp_ContractConstructionDetail->item_code;
+                            $contractConstructionDetail->item_name = $temp_ContractConstructionDetail->item_name;
+                            $contractConstructionDetail->item_standard = $temp_ContractConstructionDetail->item_standard;
+                            $contractConstructionDetail->item_unit = $temp_ContractConstructionDetail->item_unit;
+                            $contractConstructionDetail->item_quantity = $temp_ContractConstructionDetail->item_quantity;
+                            $contractConstructionDetail->material_cost_group = $temp_ContractConstructionDetail->material_cost_group;
+                            $contractConstructionDetail->material_cost_type = $temp_ContractConstructionDetail->material_cost_type;
+                            $contractConstructionDetail->material_cost = $temp_ContractConstructionDetail->material_cost;
+                            $contractConstructionDetail->labor_cost_group = $temp_ContractConstructionDetail->labor_cost_group;
+                            $contractConstructionDetail->labor_cost_type = $temp_ContractConstructionDetail->labor_cost_type;
+                            $contractConstructionDetail->labor_cost = $temp_ContractConstructionDetail->labor_cost;
+                            $contractConstructionDetail->expense_group = $temp_ContractConstructionDetail->expense_group;
+                            $contractConstructionDetail->expense_type = $temp_ContractConstructionDetail->expense_type;
+                            $contractConstructionDetail->expense = $temp_ContractConstructionDetail->expense;
+                            $contractConstructionDetail->material_cost_execute = $temp_ContractConstructionDetail->material_cost_execute;
+                            $contractConstructionDetail->expense_cost_execute = $temp_ContractConstructionDetail->expense_cost_execute;
+                            $contractConstructionDetail->labor_cost_execute = $temp_ContractConstructionDetail->labor_cost_execute;
+                            $contractConstructionDetail->item_quantity_execute = $temp_ContractConstructionDetail->item_quantity_execute;
+
+                            $contractConstructionDetail->save();
+                        }
+                    }
+                }
+                // ↑ 업데이트때 이 함수로 안들어감
+
+                // dd($building_updArr);
+                foreach ($building_updArr as $key => $updIdx) {
+                    // dd('테스트');
+
+                    $ContractBuilding_upd = ContractBuilding::find($updIdx);
+                    $temp_Contract_building = temp_Contract_building::find($updIdx);
+
+                    $ContractBuilding_upd->building_name = $temp_Contract_building->building_name;
+                    $ContractBuilding_upd->contract_idx = $contract->idx;
+                    $ContractBuilding_upd->save();
+
+
+                    //------------------------------------------------------------------------------
+
+
+                    //두번째 테이블 업데이트
+                    $contractConstruction_idx = ContractConstruction::getIdxFirst($updIdx);
+                    $temp_ContractConstruction_idx = temp_ContractConstruction::getIdxFirst($updIdx);
+
+                    $contractConstruction = ContractConstruction::getIdxWhereBuildingIdx($updIdx);
+                    $temp_ContractConstruction = temp_ContractConstruction::getIdxWhereBuildingIdx($updIdx);
+
+
+                    // dd($temp_ContractConstruction);
+                    $secondTable_idx_arr = [];
+                    $temp_secondTable_idx_arr = [];
+                    $insArr = [];
+
+
+
+                    // dd($temp_ContractConstruction);
+                    foreach ($contractConstruction as $secondTable) {
+                        array_push($secondTable_idx_arr, $secondTable->idx);
+                        // dd('테스트');
+                    }
+                    // dd($secondTable_idx_arr);
+                    foreach ($temp_ContractConstruction as $temp_secondTable) {
+
+                        array_push($temp_secondTable_idx_arr, $temp_secondTable->idx);
+                        // dd('테스트42');
+                        if ($temp_secondTable->temp_division == 1) {
+                            array_push($insArr, $temp_secondTable->idx);
+                        }
+                    }
+
+                    // dd($temp_secondTable_idx_arr);
+                    // dd($insArr);
+
+
+                    $updArr = array_intersect($secondTable_idx_arr, $temp_secondTable_idx_arr);
+                    $delArr = array_diff($secondTable_idx_arr, $temp_secondTable_idx_arr);
+                    $dontDel = [];
+
+
+                    foreach ($updArr as $updArrIdx) {
+                        // dd($updArrIdx);
+
+                        $contractConstruction = ContractConstruction::find($updArrIdx);
+                        $temp_ContractConstruction = temp_ContractConstruction::find($updArrIdx);
+
+                        $contractConstruction->contract_idx = $contract->idx;
+                        $contractConstruction->type = $temp_ContractConstruction->type;
+                        $contractConstruction->category = $temp_ContractConstruction->category;
+                        $contractConstruction->unit = $temp_ContractConstruction->unit;
+                        $contractConstruction->page_idx = $temp_ContractConstruction->page_idx;
+                        $contractConstruction->quantity = $temp_ContractConstruction->quantity;
+                        $contractConstruction->total_material_price = $temp_ContractConstruction->total_material_price;
+                        $contractConstruction->total_labor_price = $temp_ContractConstruction->total_labor_price;
+                        $contractConstruction->total_expense_price = $temp_ContractConstruction->total_expense_price;
+                        $contractConstruction->uvr = $temp_ContractConstruction->uvr;
+                        $contractConstruction->building_idx = $ContractBuilding_upd->idx;
+
+                        $contractConstruction->save();
+
+
+                        $temp_ContractConstructionDetail_pz = temp_ContractConstructionDetail::getIdx($updArrIdx); // 세번째 테이블 idx값 뽑아오기
+
+
+                        // ↓ 아래 반복문이 detail 밀어넣는 반복문( 다수동 )
+
+                        //요놈 잘 보셈 ↓
+                        // dd($temp_ContractConstructionDetail_pz);
+                        foreach ($temp_ContractConstructionDetail_pz as $thirdTableIdx) {
+                            // dd($thirdTableIdx);
+                            # code...
+                            $contractConstructionDetail = $thirdTableIdx->temp_division == 0 ? ContractConstructionDetail::find($thirdTableIdx->idx) : new ContractConstructionDetail();
+                            // dd($contractConstructionDetail);
+                            $temp_ContractConstructionDetail = temp_ContractConstructionDetail::find($thirdTableIdx->idx);
+                            // dd($temp_ContractConstructionDetail); -> idx 제일 낮은 디테일 가져옴
+                            // dd($temp_ContractConstructionDetail);
+                            $contractConstructionDetail->contract_construction_idx = $contractConstruction->idx;
+                            $contractConstructionDetail->item_code = $temp_ContractConstructionDetail->item_code;
+                            $contractConstructionDetail->item_name = $temp_ContractConstructionDetail->item_name;
+                            $contractConstructionDetail->item_standard = $temp_ContractConstructionDetail->item_standard;
+                            $contractConstructionDetail->item_unit = $temp_ContractConstructionDetail->item_unit;
+                            $contractConstructionDetail->item_quantity = $temp_ContractConstructionDetail->item_quantity;
+                            $contractConstructionDetail->material_cost_group = $temp_ContractConstructionDetail->material_cost_group;
+                            $contractConstructionDetail->material_cost_type = $temp_ContractConstructionDetail->material_cost_type;
+                            $contractConstructionDetail->material_cost = $temp_ContractConstructionDetail->material_cost;
+                            $contractConstructionDetail->labor_cost_group = $temp_ContractConstructionDetail->labor_cost_group;
+                            $contractConstructionDetail->labor_cost_type = $temp_ContractConstructionDetail->labor_cost_type;
+                            $contractConstructionDetail->labor_cost = $temp_ContractConstructionDetail->labor_cost;
+                            $contractConstructionDetail->expense_group = $temp_ContractConstructionDetail->expense_group;
+                            $contractConstructionDetail->expense_type = $temp_ContractConstructionDetail->expense_type;
+                            $contractConstructionDetail->expense = $temp_ContractConstructionDetail->expense;
+                            $contractConstructionDetail->material_cost_execute = $temp_ContractConstructionDetail->material_cost_execute;
+                            $contractConstructionDetail->expense_cost_execute = $temp_ContractConstructionDetail->expense_cost_execute;
+                            $contractConstructionDetail->labor_cost_execute = $temp_ContractConstructionDetail->labor_cost_execute;
+                            $contractConstructionDetail->item_quantity_execute = $temp_ContractConstructionDetail->item_quantity_execute;
+                            // dd($contractConstructionDetail);
+                            $contractConstructionDetail->save();
+
+                            array_push($dontDel, $contractConstructionDetail->idx);
+                        }
+
+                        //요놈 잘 보셈 ↑
+                    }
+
+                    // dd('yes');
+                    // dd($delArr);
+                    foreach ($delArr as $delArrIdx) {
+                        // dd($delArrIdx); 여기 안들어옴
+                        // dd('test');
+                        $contractConstruction_del = ContractConstruction::find($delArrIdx);
+                        $contractConstruction_del->delete();
+                    }
+
+                    foreach ($insArr as $insArrIdx) {
+
+                        $contractConstruction = new ContractConstruction();
+                        $temp_ContractConstruction_ins = temp_ContractConstruction::find($insArrIdx);
+
+                        $contractConstruction->contract_idx = $contract->idx;
+                        $contractConstruction->type = $temp_ContractConstruction_ins->type;
+                        $contractConstruction->category = $temp_ContractConstruction_ins->category;
+                        $contractConstruction->unit = $temp_ContractConstruction_ins->unit;
+                        $contractConstruction->quantity = $temp_ContractConstruction_ins->quantity;
+                        $contractConstruction->page_idx = $temp_ContractConstruction_ins->page_idx;
+                        $contractConstruction->total_material_price = $temp_ContractConstruction_ins->total_material_price;
+                        $contractConstruction->total_labor_price = $temp_ContractConstruction_ins->total_labor_price;
+                        $contractConstruction->total_expense_price = $temp_ContractConstruction_ins->total_expense_price;
+                        $contractConstruction->uvr = $temp_ContractConstruction_ins->uvr;
+                        $contractConstruction->building_idx = $temp_ContractConstruction_ins->building_idx;
+
+                        $contractConstruction->save();
+
+                        $temp_ContractConstructionDetail_pz = temp_ContractConstructionDetail::getIdx($insArrIdx); // 세번째 테이블 idx값 뽑아오기
+
+                        foreach ($temp_ContractConstructionDetail_pz as $thirdTableIdx) {
+                            # code...
+                            $contractConstructionDetail = new ContractConstructionDetail();
+                            $temp_ContractConstructionDetail = temp_ContractConstructionDetail::find($thirdTableIdx->idx);
+
+                            $contractConstructionDetail->contract_construction_idx = $contractConstruction->idx;
+                            $contractConstructionDetail->item_code = $temp_ContractConstructionDetail->item_code;
+                            $contractConstructionDetail->item_name = $temp_ContractConstructionDetail->item_name;
+                            $contractConstructionDetail->item_standard = $temp_ContractConstructionDetail->item_standard;
+                            $contractConstructionDetail->item_unit = $temp_ContractConstructionDetail->item_unit;
+                            $contractConstructionDetail->item_quantity = $temp_ContractConstructionDetail->item_quantity;
+                            $contractConstructionDetail->material_cost_group = $temp_ContractConstructionDetail->material_cost_group;
+                            $contractConstructionDetail->material_cost_type = $temp_ContractConstructionDetail->material_cost_type;
+                            $contractConstructionDetail->material_cost = $temp_ContractConstructionDetail->material_cost;
+                            $contractConstructionDetail->labor_cost_group = $temp_ContractConstructionDetail->labor_cost_group;
+                            $contractConstructionDetail->labor_cost_type = $temp_ContractConstructionDetail->labor_cost_type;
+                            $contractConstructionDetail->labor_cost = $temp_ContractConstructionDetail->labor_cost;
+                            $contractConstructionDetail->expense_group = $temp_ContractConstructionDetail->expense_group;
+                            $contractConstructionDetail->expense_type = $temp_ContractConstructionDetail->expense_type;
+                            $contractConstructionDetail->expense = $temp_ContractConstructionDetail->expense;
+                            $contractConstructionDetail->material_cost_execute = $temp_ContractConstructionDetail->material_cost_execute;
+                            $contractConstructionDetail->expense_cost_execute = $temp_ContractConstructionDetail->expense_cost_execute;
+                            $contractConstructionDetail->labor_cost_execute = $temp_ContractConstructionDetail->labor_cost_execute;
+                            $contractConstructionDetail->item_quantity_execute = $temp_ContractConstructionDetail->item_quantity_execute;
+
+                            $contractConstructionDetail->save();
+                        }
+                    }
+                    // dd('yes');
+                    // dd($temp_secondTable_idx_arr);
+                }
+                dd($temp_secondTable_idx_arr);
+            }
+
+
+            //------------------------------------------------------------------------------
+            //세번째 테이블 삭제되는 것만 업데이트 (insert와 update는 위에 두번째 테이블업데이트 하면서 함)
+
+            $third_idx_arr = [];
+            $temp_third_idx_arr = [];
+
+            // dd($temp_secondTable_idx_arr);
+            // $temp_secondTable_idx_arr 여기안에 뭐가 들어 갈 수가 없음...
+            foreach ($temp_secondTable_idx_arr as $temp_secondTable_idx) {
+
+                $contractConstructionDetail = ContractConstructionDetail::getIdx($temp_secondTable_idx); // 세번째 테이블 idx값 뽑아오기
+                $temp_ContractConstructionDetail = temp_ContractConstructionDetail::getIdx($temp_secondTable_idx); // 세번째 테이블 idx값 뽑아오기
+
+                foreach ($contractConstructionDetail as $contractConstructionDetail_idx) {
+                    # code...
+                    array_push($third_idx_arr, $contractConstructionDetail_idx->idx);
+                }
+
+                foreach ($temp_ContractConstructionDetail as $temp_ContractConstructionDetail_idx) {
+                    # code...
+                    array_push($temp_third_idx_arr, $temp_ContractConstructionDetail_idx->idx);
+                }
+            }
+
+            $updArr = array_intersect($third_idx_arr, $temp_third_idx_arr);
+            $delArr = array_diff($third_idx_arr, $temp_third_idx_arr);
+            $insArr = array_diff($temp_third_idx_arr, $third_idx_arr);
+
+            // 2023-09-11 이성택 여기부터 확인하기 ㅇㅇ
+
+            if (empty($third_idx_arr)) {
+                // dd(1);
+                // dd($temp_third_idx_arr);
+                // dd('zz'); 여기는 들어옴
+                //$temp_third_idx_arr 여기에 아무것도없음
+                // 본테이블에 아무 데이터도 없을 때, 임시테이블에 있는 데이터 싹다 인서트
+                //여기if 들어와도 ↓ 변수에 값이없어서 반복문 안돌아감
+                foreach ($temp_third_idx_arr as $temp_third_idx) {
+                    $contractConstructionDetail = new ContractConstructionDetail();
+                    $temp_ContractConstructionDetail = temp_ContractConstructionDetail::find($temp_third_idx);
+                    $contractConstructionDetail->contract_construction_idx = $contractConstruction->idx;
+                    $contractConstructionDetail->item_code = $temp_ContractConstructionDetail->item_code;
+                    $contractConstructionDetail->item_name = $temp_ContractConstructionDetail->item_name;
+                    $contractConstructionDetail->item_standard = $temp_ContractConstructionDetail->item_standard;
+                    $contractConstructionDetail->item_unit = $temp_ContractConstructionDetail->item_unit;
+                    $contractConstructionDetail->item_quantity = $temp_ContractConstructionDetail->item_quantity;
+                    $contractConstructionDetail->material_cost_group = $temp_ContractConstructionDetail->material_cost_group;
+                    $contractConstructionDetail->material_cost_type = $temp_ContractConstructionDetail->material_cost_type;
+                    $contractConstructionDetail->material_cost = $temp_ContractConstructionDetail->material_cost;
+                    $contractConstructionDetail->labor_cost_group = $temp_ContractConstructionDetail->labor_cost_group;
+                    $contractConstructionDetail->labor_cost_type = $temp_ContractConstructionDetail->labor_cost_type;
+                    $contractConstructionDetail->labor_cost = $temp_ContractConstructionDetail->labor_cost;
+                    $contractConstructionDetail->expense_group = $temp_ContractConstructionDetail->expense_group;
+                    $contractConstructionDetail->expense_type = $temp_ContractConstructionDetail->expense_type;
+                    $contractConstructionDetail->expense = $temp_ContractConstructionDetail->expense;
+                    $contractConstructionDetail->material_cost_execute = $temp_ContractConstructionDetail->material_cost_execute;
+                    $contractConstructionDetail->expense_cost_execute = $temp_ContractConstructionDetail->expense_cost_execute;
+                    $contractConstructionDetail->labor_cost_execute = $temp_ContractConstructionDetail->labor_cost_execute;
+                    $contractConstructionDetail->item_quantity_execute = $temp_ContractConstructionDetail->item_quantity_execute;
+
+                    $contractConstructionDetail->save();
+                }
+            } else if (empty($temp_third_idx_arr)) {
+                // dd(2);
+                // 임시테이블에 아무 데이터도 없을 때, 본테이블에 있는 데이터 싹다 지움
+                foreach ($contractConstructionDetail as $thirdTable) {
+                    $contractConstructionDetail_del = ContractConstructionDetail::find($thirdTable->idx);
+                    $contractConstructionDetail_del->delete();
+                }
+            } else {
+                // dd(3);
+                foreach ($delArr as $thirdTableIdx) {
+                    //이거시 수정시 원래있던거 삭제하는 delete 문
+                    // dd(!in_array($thirdTableIdx, $dontDel));
+                    if (!in_array($thirdTableIdx, $dontDel)) {
+                        $contractConstructionDetail_del = ContractConstructionDetail::find($thirdTableIdx);
+                        $contractConstructionDetail_del->delete();
+                        // dd($thirdTableIdx, $dontDel);
+                    }
+                }
+            }
+            DB::commit();
+            return response()->json(["status" => "success", 'idx' => $contract_idx]);
+        } catch (Exception $e) {
+            dd($e);
+            DB::rollBack();
+            return response()->json(["status" => "error", "message" => $e]);
+        }
+    }
